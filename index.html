@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>crt-journal</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none; }
+  body {
+    background: radial-gradient(ellipse at 50% 0%, #14181a 0%, #050607 70%);
+    font-family: 'Share Tech Mono', monospace;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+  }
+
+  /* ============ DEVICE SHELL ============ */
+  .device {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    height: 100svh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100svh;
+    max-height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 3vw 3vw calc(2.5vw + env(safe-area-inset-bottom)) 3vw;
+    padding-left: calc(3vw + env(safe-area-inset-left));
+    padding-right: calc(3vw + env(safe-area-inset-right));
+    gap: 10px;
+    background:
+      linear-gradient(180deg, #202523 0%, #141715 100%);
+  }
+
+  /* ambient light the "screen" throws onto the room/casing */
+  .device::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse 70% 45% at 50% 30%, rgba(93,255,160,0.10), transparent 70%);
+    animation: ambient-breathe 5.5s ease-in-out infinite;
+    z-index: 0;
+  }
+  @keyframes ambient-breathe {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+
+  /* ============ CRT BEZEL (casing around the glass) ============ */
+  .crt-bezel {
+    position: relative;
+    z-index: 1;
+    flex: 1 1 58%;
+    min-height: 0;
+    padding: 4vw 3.5vw 5.5vw 3.5vw;
+    border-radius: 11vw 11vw 7vw 7vw;
+    background: linear-gradient(160deg, #232825 0%, #141917 55%, #0a0d0b 100%);
+    box-shadow:
+      0 16px 34px rgba(0,0,0,0.55),
+      inset 0 2px 1px rgba(255,255,255,0.06),
+      inset 0 -10px 20px rgba(0,0,0,0.55);
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ============ THE CURVED GLASS ============ */
+  .crt-screen {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    /* bigger top curve, smaller bottom curve = classic fake tube-curvature */
+    border-radius: 9vw 9vw 5vw 5vw;
+    background: radial-gradient(ellipse 120% 90% at 50% 20%, #0a1b10 0%, #040a05 55%, #010301 100%);
+    box-shadow:
+      inset 0 0 0 2px rgba(93,255,160,0.06),
+      inset 0 30px 60px 10px rgba(0,0,0,0.85),
+      inset 0 -50px 90px 10px rgba(0,0,0,0.7),
+      inset 0 0 120px 20px rgba(0,0,0,0.6),
+      0 0 40px 6px rgba(93,255,160,0.18),
+      0 0 90px 18px rgba(93,255,160,0.10);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  /* scanlines */
+  .crt-screen::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 1px,
+      rgba(0,0,0,0.20) 2px,
+      rgba(0,0,0,0.20) 3px
+    );
+    z-index: 5;
+    mix-blend-mode: multiply;
+  }
+  /* curvature vignette */
+  .crt-screen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse 115% 85% at 50% 38%, transparent 45%, rgba(0,0,0,0.65) 100%);
+    z-index: 6;
+  }
+  /* glass specular highlight — sells the "concave dome" illusion */
+  .crt-glare {
+    position: absolute;
+    top: -18%;
+    left: -10%;
+    width: 75%;
+    height: 55%;
+    pointer-events: none;
+    z-index: 7;
+    background: radial-gradient(ellipse at 50% 50%, rgba(190,255,220,0.16), rgba(190,255,220,0.04) 55%, transparent 75%);
+    transform: rotate(-12deg);
+    mix-blend-mode: screen;
+  }
+
+  /* subtle brightness-flicker overlay — uses opacity, not filter, so it
+     never interferes with this element's own border-radius clip */
+  .crt-flicker {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9;
+    background: #eafff2;
+    mix-blend-mode: overlay;
+    opacity: 0;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .crt-flicker { animation: crt-flicker 6.5s infinite; }
+  }
+  @keyframes crt-flicker {
+    0%, 96%, 100% { opacity: 0; }
+    97% { opacity: 0.05; }
+    98% { opacity: 0; }
+    99% { opacity: 0.035; }
+  }
+
+  .crt-titlebar {
+    position: relative;
+    z-index: 8;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #5dffa0;
+    color: #04140a;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(12px, 1.5vw, 14px);
+    letter-spacing: 0.04em;
+    padding: 7px 5.5vw;
+    padding-top: calc(7px + env(safe-area-inset-top));
+    border-radius: 9vw 9vw 0 0;
+    box-shadow: 0 0 16px rgba(93,255,160,0.7), 0 0 40px rgba(93,255,160,0.35);
+  }
+  .crt-title-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .io-buttons {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .io-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    background: rgba(4,20,10,0.12);
+    border: 1px solid rgba(4,20,10,0.4);
+    border-radius: 4px;
+    color: #04140a;
+    font-family: 'Share Tech Mono', monospace;
+    padding: 2px 6px 3px 6px;
+    cursor: pointer;
+    line-height: 1.1;
+  }
+  .io-btn:active { background: rgba(4,20,10,0.28); }
+  .io-arrow { font-size: 13px; }
+  .io-label { font-size: 8px; letter-spacing: 0.06em; }
+
+  .crt-body {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 22px 6px 22px;
+    color: #5dffa0;
+    text-shadow: 0 0 4px rgba(93,255,160,0.9), 0 0 14px rgba(93,255,160,0.5), 0 0 26px rgba(93,255,160,0.2);
+  }
+  .crt-body::-webkit-scrollbar { width: 8px; }
+  .crt-body::-webkit-scrollbar-thumb { background: rgba(93,255,160,0.25); border-radius: 4px; }
+  .crt-line {
+    font-size: clamp(13px, 1.6vw, 16px);
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: 'Share Tech Mono', monospace;
+    color: #5dffa0;
+  }
+  .crt-line--warning { color: #ffb000; text-shadow: 0 0 5px rgba(255,176,0,0.7), 0 0 16px rgba(255,176,0,0.35); }
+  .crt-boot {
+    font-family: 'VT323', monospace;
+    font-size: clamp(16px, 2.2vw, 20px);
+    color: #5dffa0;
+    line-height: 1.6;
+  }
+  .crt-footer {
+    position: relative;
+    z-index: 2;
+    padding: 8px 22px 16px 22px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom) * 0.2);
+    border-top: 1px solid rgba(93,255,160,0.16);
+    border-radius: 0 0 5vw 5vw;
+    background: #040a05;
+  }
+  .crt-prompt-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4em;
+  }
+  .crt-prompt-row--tight { gap: 0.15em; }
+  #commandRow { align-items: center; }
+  .crt-input-scroll {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    position: relative;
+  }
+  .crt-input-scroll::-webkit-scrollbar { display: none; }
+  .crt-idle-cursor {
+    position: absolute;
+    left: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-block;
+    width: 0.55em;
+    height: 1.1em;
+    background: #5dffa0;
+    box-shadow: 0 0 8px rgba(93,255,160,0.95), 0 0 18px rgba(93,255,160,0.5);
+    animation: crt-cursor-blink 1.7s steps(1) infinite;
+    pointer-events: none;
+  }
+  @keyframes crt-cursor-blink {
+    0%, 60% { opacity: 1; }
+    61%, 100% { opacity: 0; }
+  }
+  .crt-prompt-label {
+    color: #5dffa0;
+    font-size: clamp(16px, 1.6vw, 18px);
+    text-shadow: 0 0 3px rgba(93,255,160,0.8), 0 0 10px rgba(93,255,160,0.4);
+    padding-top: 1px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .crt-input, .crt-textarea {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 0;
+    margin: 0;
+    color: #5dffa0;
+    caret-color: #5dffa0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(16px, 1.6vw, 18px);
+    text-shadow: 0 0 3px rgba(93,255,160,0.8), 0 0 10px rgba(93,255,160,0.4);
+    line-height: 1.55;
+  }
+  #commandInput {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    padding: 0;
+    caret-color: transparent;
+  }
+  #cursorMirror {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    white-space: pre;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(16px, 1.6vw, 18px);
+    line-height: 1.55;
+  }
+  .crt-textarea { min-height: 4.5em; }
+  .crt-hint {
+    margin-top: 6px;
+    color: #5dffa0;
+    font-size: clamp(11px, 1.3vw, 13px);
+    opacity: 0.85;
+  }
+  .hidden { display: none !important; }
+
+  /* ============ RETRO KEYBOARD TRAY ============ */
+  .keyboard-tray {
+    position: relative;
+    z-index: 1;
+    flex: 1 1 40%;
+    min-height: 0;
+    border-radius: 6vw;
+    padding: 2.5vw 2vw 3vw 2vw;
+    background: linear-gradient(180deg, #26302a 0%, #171e1a 60%, #0c110f 100%);
+    box-shadow:
+      inset 0 3px 2px rgba(255,255,255,0.05),
+      inset 0 -6px 16px rgba(0,0,0,0.6),
+      inset 0 10px 24px rgba(93,255,160,0.06),
+      0 10px 26px rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .kb-row {
+    display: flex;
+    flex: 1;
+    gap: 4px;
+  }
+  .kb-key {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    border-radius: 6px;
+    background: linear-gradient(180deg, #35443b 0%, #222d27 55%, #161e1a 100%);
+    border: 1px solid #0a0f0c;
+    border-bottom: 2px solid #060907;
+    color: #8dffb8;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(11px, 3vw, 15px);
+    text-shadow: 0 0 4px rgba(93,255,160,0.65), 0 0 10px rgba(93,255,160,0.3);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    transition: transform 0.02s linear;
+  }
+  .kb-key:active, .kb-key.kb-key--pressed {
+    background: linear-gradient(180deg, #1c2621 0%, #131a16 100%);
+    transform: translateY(1px);
+    border-bottom: 1px solid #060907;
+    color: #d9ffe8;
+    text-shadow: 0 0 6px rgba(93,255,160,0.95), 0 0 16px rgba(93,255,160,0.6);
+  }
+  .kb-key--wide { flex: 2.2; }
+  .kb-key--space { flex: 5; }
+  .kb-key--small { font-size: clamp(9px, 2.4vw, 12px); letter-spacing: 0.02em; }
+  .kb-key--active { background: linear-gradient(180deg, #4a6b56 0%, #2a3b30 100%); color: #eafff1; }
+</style>
+</head>
+<body>
+
+<div class="device">
+  <div class="crt-bezel">
+    <div class="crt-screen" id="crtScreen">
+      <div class="crt-glare" aria-hidden="true"></div>
+      <div class="crt-flicker" aria-hidden="true"></div>
+      <div class="crt-titlebar" id="crtTitlebar">
+        <span class="crt-title-text" id="titleText">Untitled</span>
+        <div class="io-buttons">
+          <button type="button" class="io-btn" id="importBtn" title="Import journal">
+            <span class="io-arrow">&#8595;</span><span class="io-label">IMPORT</span>
+          </button>
+          <button type="button" class="io-btn" id="exportBtn" title="Export journal">
+            <span class="io-arrow">&#8593;</span><span class="io-label">EXPORT</span>
+          </button>
+        </div>
+      </div>
+      <div class="crt-body" id="crtBody"></div>
+      <form class="crt-footer" id="crtFooter" style="display:none;" autocomplete="off" onsubmit="return false;">
+        <div class="crt-prompt-row" id="commandRow">
+          <span class="crt-prompt-label" id="promptLabel">guest@journal:~$</span>
+          <div class="crt-input-scroll" id="inputScroll">
+            <input class="crt-input" id="commandInput" name="crt_line_1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly inputmode="none" />
+            <span class="crt-idle-cursor" id="idleCursor" aria-hidden="true"></span>
+            <span id="cursorMirror" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div id="writingRow" class="hidden">
+          <div class="crt-prompt-row crt-prompt-row--tight">
+            <span class="crt-prompt-label">&gt;</span>
+            <textarea class="crt-textarea" id="draftInput" name="crt_line_2" rows="3" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly inputmode="none"></textarea>
+          </div>
+          <div class="crt-hint">.save to save this entry &middot; .cancel to discard</div>
+        </div>
+      </form>
+      <input type="file" id="importFile" accept="application/json" class="hidden" />
+    </div>
+  </div>
+
+  <div class="keyboard-tray" id="keyboardTray">
+    <div class="kb-row" id="kbRowNumbers"></div>
+    <div class="kb-row" id="kbRowQ"></div>
+    <div class="kb-row" id="kbRowA"></div>
+    <div class="kb-row" id="kbRowZ"></div>
+    <div class="kb-row" id="kbRowBottom"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const STORAGE_KEY = 'entries';
+  const NAME_KEY = 'owner-name';
+  const body = document.getElementById('crtBody');
+  const footer = document.getElementById('crtFooter');
+  const titleText = document.getElementById('titleText');
+  const commandRow = document.getElementById('commandRow');
+  const writingRow = document.getElementById('writingRow');
+  const commandInput = document.getElementById('commandInput');
+  const draftInput = document.getElementById('draftInput');
+  const promptLabel = document.getElementById('promptLabel');
+  const idleCursor = document.getElementById('idleCursor');
+  const cursorMirror = document.getElementById('cursorMirror');
+  const importBtn = document.getElementById('importBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const importFile = document.getElementById('importFile');
+
+  let entries = [];
+  let ownerName = null;
+  let mode = 'command'; // 'command' | 'writing' | 'naming'
+  let pendingDelete = null;
+  let storageError = false;
+  let capsOn = false;
+
+  function promptUser() {
+    if (!ownerName) return 'guest';
+    const slug = ownerName.trim().toLowerCase().replace(/\s+/g, '');
+    return slug || 'guest';
+  }
+
+  function promptText() {
+    return promptUser() + '@journal:~$';
+  }
+
+  function updatePromptLabel() {
+    promptLabel.textContent = promptText();
+  }
+
+  function setTitlebar() {
+    titleText.textContent = ownerName ? ownerName + '\u2019s Journal' : 'Untitled';
+    updatePromptLabel();
+  }
+
+  async function loadName() {
+    try {
+      const res = await window.storage.get(NAME_KEY, false);
+      ownerName = res ? JSON.parse(res.value) : null;
+    } catch (e) {
+      ownerName = null;
+    }
+    setTitlebar();
+  }
+
+  async function saveName(name) {
+    ownerName = name;
+    setTitlebar();
+    try {
+      await window.storage.set(NAME_KEY, JSON.stringify(name), false);
+    } catch (e) {
+      // non-fatal; name still works for this session
+    }
+  }
+
+  // ---------- storage helpers ----------
+  async function loadEntries() {
+    try {
+      const res = await window.storage.get(STORAGE_KEY, false);
+      const parsed = res ? JSON.parse(res.value) : [];
+      entries = Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      entries = [];
+    }
+  }
+
+  async function persist() {
+    try {
+      const result = await window.storage.set(STORAGE_KEY, JSON.stringify(entries), false);
+      storageError = !result;
+    } catch (e) {
+      storageError = true;
+    }
+  }
+
+  // ---------- render helpers ----------
+  function scrollToBottom() {
+    body.scrollTop = body.scrollHeight;
+  }
+
+  function appendLine(type, text) {
+    const div = document.createElement('div');
+    div.className = 'crt-line' + (type === 'warning' ? ' crt-line--warning' : '');
+    div.textContent = text;
+    body.appendChild(div);
+    scrollToBottom();
+  }
+
+  function appendMany(type, lines) {
+    lines.forEach((l) => appendLine(type, l));
+  }
+
+  function appendBootLine(text) {
+    const div = document.createElement('div');
+    div.className = 'crt-boot';
+    div.textContent = text || '\u00A0';
+    body.appendChild(div);
+    scrollToBottom();
+  }
+
+  // ---------- formatting ----------
+  function fmtDate(ts) {
+    const d = new Date(ts);
+    const day = d.toLocaleDateString(undefined, {
+      weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
+    });
+    const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    return day + ' ' + time;
+  }
+
+  function preview(text, n) {
+    n = n || 46;
+    const oneLine = text.replace(/\s+/g, ' ').trim();
+    return oneLine.length > n ? oneLine.slice(0, n) + '…' : oneLine;
+  }
+
+  // ---------- command handling ----------
+  function handleCommand(raw) {
+    const cmd = raw.trim();
+    appendLine('command', promptText() + ' ' + cmd);
+    if (cmd === '') return;
+
+    const parts = cmd.split(/\s+/);
+    const word = parts[0];
+    const arg = parts.slice(1).join(' ');
+    const lower = word.toLowerCase();
+
+    if (pendingDelete !== null) {
+      if (lower === 'y' || lower === 'yes') {
+        const idx = pendingDelete;
+        entries = entries.filter((_, i) => i !== idx);
+        persist();
+        appendLine('system', 'entry #' + (idx + 1) + ' deleted.');
+      } else {
+        appendLine('system', 'delete cancelled.');
+      }
+      pendingDelete = null;
+      return;
+    }
+
+    switch (lower) {
+      case 'help':
+        appendMany('output', [
+          'available commands:',
+          '  new             start a new entry',
+          '  list            show all entries',
+          '  read <n>        read entry number n',
+          '  search <text>   search entries',
+          '  delete <n>      delete entry number n',
+          '  export          download entries as a file',
+          '  import          load entries from a file',
+          '  clear           clear the screen',
+          '  help            show this list'
+        ]);
+        break;
+
+      case 'new':
+        mode = 'writing';
+        draftInput.value = '';
+        appendMany('system', [
+          '',
+          '-- new entry -- type below.',
+          'press ENTER for a new line.',
+          'type .save alone on a line to save, .cancel to discard.'
+        ]);
+        showWritingRow();
+        break;
+
+      case 'list':
+        if (entries.length === 0) {
+          appendLine('output', 'no entries yet. type NEW to write one.');
+        } else {
+          const lines = entries.map((e, i) => '#' + (i + 1) + '  ' + fmtDate(e.ts) + '  ' + preview(e.text)).reverse();
+          appendMany('output', lines);
+        }
+        break;
+
+      case 'read': {
+        const n = parseInt(arg, 10);
+        if (!n || n < 1 || n > entries.length) {
+          appendLine('system', 'no entry #' + (arg || '?'));
+        } else {
+          const e = entries[n - 1];
+          const lines = ['--- entry #' + n + ' :: ' + fmtDate(e.ts) + ' ---'].concat(e.text.split('\n')).concat(['--- end ---']);
+          appendMany('entry', lines);
+        }
+        break;
+      }
+
+      case 'search': {
+        if (!arg) {
+          appendLine('system', 'usage: search <text>');
+          break;
+        }
+        const q = arg.toLowerCase();
+        const hits = entries.map((e, i) => ({ e: e, i: i })).filter(function (o) {
+          return o.e.text.toLowerCase().indexOf(q) !== -1;
+        });
+        if (hits.length === 0) {
+          appendLine('output', 'no matches for "' + arg + '".');
+        } else {
+          const lines = [hits.length + ' match(es) for "' + arg + '":'].concat(
+            hits.map(function (o) { return '#' + (o.i + 1) + '  ' + fmtDate(o.e.ts) + '  ' + preview(o.e.text); })
+          );
+          appendMany('output', lines);
+        }
+        break;
+      }
+
+      case 'delete': {
+        const n = parseInt(arg, 10);
+        if (!n || n < 1 || n > entries.length) {
+          appendLine('system', 'no entry #' + (arg || '?'));
+        } else {
+          pendingDelete = n - 1;
+          appendLine('warning', 'delete entry #' + n + ' (' + fmtDate(entries[n - 1].ts) + ')? type y to confirm, anything else to cancel.');
+        }
+        break;
+      }
+
+      case 'export':
+        exportJournal();
+        break;
+
+      case 'import':
+        importFile.click();
+        break;
+
+      case 'clear':
+        body.innerHTML = '';
+        break;
+
+      default:
+        appendLine('system', 'unknown command: "' + word + '". type HELP for a list.');
+    }
+  }
+
+  function showWritingRow() {
+    commandRow.classList.add('hidden');
+    writingRow.classList.remove('hidden');
+    draftInput.focus();
+  }
+
+  function showCommandRow() {
+    writingRow.classList.add('hidden');
+    commandRow.classList.remove('hidden');
+    commandInput.focus();
+  }
+
+  // ---------- import / export ----------
+  function exportJournal() {
+    const data = { owner: ownerName, exportedAt: Date.now(), entries: entries };
+    let blob;
+    try {
+      blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    } catch (e) {
+      appendLine('warning', 'export failed: could not build file.');
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = promptUser() + '-journal-export.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    appendLine('system', 'exported ' + entries.length + ' entr' + (entries.length === 1 ? 'y' : 'ies') + ' to file.');
+  }
+
+  function importJournalFile(file) {
+    const reader = new FileReader();
+    reader.onload = function (ev) {
+      let added = 0;
+      try {
+        const data = JSON.parse(ev.target.result);
+        const incoming = Array.isArray(data) ? data : (data && Array.isArray(data.entries) ? data.entries : null);
+        if (!incoming) throw new Error('bad format');
+        incoming.forEach(function (en, i) {
+          if (en && typeof en.text === 'string' && en.text.trim() !== '') {
+            entries.push({ id: en.id || (Date.now() + i), ts: en.ts || Date.now(), text: en.text });
+            added += 1;
+          }
+        });
+        persist();
+        appendLine('system', 'imported ' + added + ' entr' + (added === 1 ? 'y' : 'ies') + '.');
+      } catch (err) {
+        appendLine('warning', 'import failed: invalid journal file.');
+      }
+    };
+    reader.onerror = function () {
+      appendLine('warning', 'import failed: could not read file.');
+    };
+    reader.readAsText(file);
+  }
+
+  importBtn.addEventListener('click', function () { importFile.click(); });
+  exportBtn.addEventListener('click', exportJournal);
+  importFile.addEventListener('change', function (e) {
+    const file = e.target.files[0];
+    importFile.value = '';
+    if (file) importJournalFile(file);
+  });
+
+  // ---------- cursor overlay (single-line command prompt) ----------
+  function updateCursorPosition() {
+    // NOTE: intentionally NOT using commandInput.selectionStart here.
+    // On readonly inputs, iOS Safari does not reliably track/update
+    // selectionStart, so we always treat the caret as sitting at the
+    // end of the current value (matches how the virtual keyboard types).
+    cursorMirror.textContent = commandInput.value;
+    const textWidth = cursorMirror.getBoundingClientRect().width;
+    const maxLeft = Math.max(commandInput.clientWidth - 2, 0);
+    const left = Math.min(Math.max(textWidth - commandInput.scrollLeft, 0), maxLeft);
+    idleCursor.style.left = (left + 2) + 'px';
+  }
+
+  function restartCursorBlink() {
+    idleCursor.style.animation = 'none';
+    void idleCursor.offsetWidth;
+    idleCursor.style.animation = '';
+  }
+
+  window.addEventListener('resize', function () {
+    requestAnimationFrame(updateCursorPosition);
+  });
+
+  // ---------- unified text entry (real keyboard OR retro on-screen keyboard) ----------
+  function activeInput() {
+    return mode === 'writing' ? draftInput : commandInput;
+  }
+
+  function insertChar(ch) {
+    const el = activeInput();
+    // Always append at the end — see note above about readonly selectionStart.
+    el.value = el.value + ch;
+    afterEdit(el);
+  }
+
+  function backspaceChar() {
+    const el = activeInput();
+    if (el.value.length === 0) return;
+    el.value = el.value.slice(0, -1);
+    afterEdit(el);
+  }
+
+  function afterEdit(el) {
+    if (el === commandInput) {
+      restartCursorBlink();
+      requestAnimationFrame(updateCursorPosition);
+    }
+  }
+
+  function submitEnter() {
+    if (mode === 'naming') {
+      const val = commandInput.value;
+      commandInput.value = '';
+      restartCursorBlink();
+      requestAnimationFrame(updateCursorPosition);
+      handleNameEntry(val);
+      return;
+    }
+    if (mode === 'writing') {
+      processDraftEnter();
+      return;
+    }
+    const val = commandInput.value;
+    commandInput.value = '';
+    restartCursorBlink();
+    requestAnimationFrame(updateCursorPosition);
+    handleCommand(val);
+  }
+
+  function processDraftEnter() {
+    const lines = draftInput.value.split('\n');
+    const lastLine = lines[lines.length - 1].trim();
+
+    if (lastLine === '.save') {
+      const text = lines.slice(0, -1).join('\n').trim();
+      if (!text) {
+        appendLine('system', 'empty entry discarded.');
+      } else {
+        entries.push({ id: Date.now(), ts: Date.now(), text: text });
+        persist();
+        appendLine('system', 'entry #' + entries.length + ' saved.');
+      }
+      draftInput.value = '';
+      mode = 'command';
+      showCommandRow();
+      return;
+    }
+    if (lastLine === '.cancel') {
+      appendLine('system', 'entry discarded.');
+      draftInput.value = '';
+      mode = 'command';
+      showCommandRow();
+      return;
+    }
+    draftInput.value = draftInput.value + '\n';
+    if (draftInput.setSelectionRange) {
+      const len = draftInput.value.length;
+      draftInput.setSelectionRange(len, len);
+    }
+  }
+
+  function handleNameEntry(raw) {
+    const name = raw.trim();
+    if (!name) {
+      appendLine('system', 'type a name to continue.');
+      return;
+    }
+    appendLine('command', '> ' + name);
+    saveName(name);
+    appendMany('system', [
+      'nice to meet you, ' + name + '.',
+      '',
+      'type HELP for a list of commands',
+      ''
+    ]);
+    mode = 'command';
+  }
+
+  function unifiedKeydown(e) {
+    const key = e.key;
+    if (key === 'Enter') {
+      e.preventDefault();
+      submitEnter();
+      return;
+    }
+    if (key === 'Backspace') {
+      e.preventDefault();
+      backspaceChar();
+      return;
+    }
+    if (key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      e.preventDefault();
+      insertChar(capsOn ? key.toUpperCase() : key);
+    }
+  }
+
+  commandInput.addEventListener('keydown', unifiedKeydown);
+  draftInput.addEventListener('keydown', unifiedKeydown);
+
+  commandInput.addEventListener('click', function () {
+    requestAnimationFrame(updateCursorPosition);
+  });
+
+  commandRow.addEventListener('click', function () {
+    commandInput.focus();
+  });
+
+  // ---------- retro on-screen keyboard ----------
+  const KB_ROWS = {
+    kbRowNumbers: ['1','2','3','4','5','6','7','8','9','0'],
+    kbRowQ: ['q','w','e','r','t','y','u','i','o','p'],
+    kbRowA: ['a','s','d','f','g','h','j','k','l'],
+    kbRowZ: ['SHIFT','z','x','c','v','b','n','m','DEL']
+  };
+
+  function buildKey(label, keyVal, extraClass) {
+    const btn = document.createElement('div');
+    btn.className = 'kb-key' + (extraClass ? ' ' + extraClass : '');
+    btn.textContent = label;
+    btn.dataset.key = keyVal;
+    return btn;
+  }
+
+  Object.keys(KB_ROWS).forEach(function (rowId) {
+    const row = document.getElementById(rowId);
+    KB_ROWS[rowId].forEach(function (k) {
+      if (k === 'SHIFT') {
+        const btn = buildKey('\u21e7', 'SHIFT', 'kb-key--small');
+        btn.id = 'shiftKey';
+        row.appendChild(btn);
+      } else if (k === 'DEL') {
+        row.appendChild(buildKey('\u232b', 'BACKSPACE', 'kb-key--small'));
+      } else {
+        row.appendChild(buildKey(k.toUpperCase(), k));
+      }
+    });
+  });
+
+  const bottomRow = document.getElementById('kbRowBottom');
+  [
+    buildKey('.', '.'),
+    buildKey(',', ','),
+    buildKey("'", "'"),
+    buildKey('?', '?'),
+    buildKey('!', '!'),
+    buildKey('-', '-')
+  ].forEach(function (el) { bottomRow.appendChild(el); });
+  const spaceKey = buildKey('SPACE', 'SPACE', 'kb-key--space kb-key--small');
+  const enterKey = buildKey('ENTER \u21b5', 'ENTER', 'kb-key--wide kb-key--small');
+  bottomRow.appendChild(spaceKey);
+  bottomRow.appendChild(enterKey);
+
+  const keyboardTray = document.getElementById('keyboardTray');
+
+  function setShiftVisual() {
+    const shiftKey = document.getElementById('shiftKey');
+    if (!shiftKey) return;
+    shiftKey.classList.toggle('kb-key--active', capsOn);
+  }
+
+  function handleVirtualKey(keyVal) {
+    if (!keyVal) return;
+    if (keyVal === 'SHIFT') {
+      capsOn = !capsOn;
+      setShiftVisual();
+      return;
+    }
+    if (keyVal === 'BACKSPACE') {
+      backspaceChar();
+      return;
+    }
+    if (keyVal === 'ENTER') {
+      submitEnter();
+      return;
+    }
+    if (keyVal === 'SPACE') {
+      insertChar(' ');
+      return;
+    }
+    // plain character
+    const ch = /^[a-z]$/.test(keyVal) && capsOn ? keyVal.toUpperCase() : keyVal;
+    insertChar(ch);
+  }
+
+  // Fire on pointerdown (not click) so keys respond the instant they're
+  // touched instead of waiting for the touch-up + synthetic click cycle.
+  // Also prevents the tray from stealing focus from the active input.
+  let pressedKey = null;
+
+  function pressKey(keyEl) {
+    if (!keyEl) return;
+    pressedKey = keyEl;
+    keyEl.classList.add('kb-key--pressed');
+    activeInput().focus();
+    handleVirtualKey(keyEl.dataset.key);
+  }
+
+  function releaseKey() {
+    if (pressedKey) pressedKey.classList.remove('kb-key--pressed');
+    pressedKey = null;
+  }
+
+  keyboardTray.addEventListener('pointerdown', function (e) {
+    const keyEl = e.target.closest('.kb-key');
+    if (!keyEl) return;
+    e.preventDefault();
+    pressKey(keyEl);
+  }, { passive: false });
+
+  keyboardTray.addEventListener('pointerup', releaseKey);
+  keyboardTray.addEventListener('pointercancel', releaseKey);
+  keyboardTray.addEventListener('pointerleave', function (e) {
+    if (e.target.closest && e.target.closest('.kb-key') === pressedKey) releaseKey();
+  });
+  // Safety net for browsers/situations that never fire a matching pointerup
+  keyboardTray.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  // ---------- boot sequence ----------
+  async function boot() {
+    await loadEntries();
+    await loadName();
+    const lines = [
+      'CRT-OS v2.3 :: TERMINAL JOURNAL',
+      'MEM CHECK ......... OK',
+      'PHOSPHOR ARRAY ..... OK',
+      'LOADING ENTRIES .... OK (' + entries.length + ' found)',
+      storageError ? 'STORAGE LINK ....... WARNING' : 'STORAGE LINK ....... OK',
+      '',
+      'type HELP for a list of commands',
+      ''
+    ];
+    let i = 0;
+    function step() {
+      if (i >= lines.length) {
+        footer.style.display = 'block';
+        updateCursorPosition();
+        if (!ownerName) {
+          appendLine('system', 'first time here. what should we call you?');
+          mode = 'naming';
+        } else {
+          mode = 'command';
+        }
+        commandInput.focus();
+        return;
+      }
+      appendBootLine(lines[i]);
+      const wasBlank = lines[i] === '';
+      i += 1;
+      setTimeout(step, wasBlank ? 120 : 220);
+    }
+    step();
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>
